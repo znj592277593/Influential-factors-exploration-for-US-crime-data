@@ -1,0 +1,76 @@
+---
+title: '5291'
+author: "Nuanjun Zhao, Qiuyu Ruan, Yufan Zhang"
+date: "4/22/2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#generate data
+data<-read.table("CRIMEDATA.txt", sep="", header=FALSE)
+UNI<-2295
+set.seed(UNI)
+index <-sample(c(1:440))
+mydata<-data[index[1:300],]
+#names(mydata)<-c("id v1","countyname v2","state v3","landarea v4","totalpopulation v5","percentofpopulation18 v6","percentofpopulation65 v7","numberofactivephysicians v8","numberofhospitalbed v9","totalseriouscrimes v10","percenthighschoolgraduates v11","percentbachelordegree v12","percentbelowpovertylevel v13","percentunemployment v14","percapitaincome v15","totalpersonalincome v16","geographicregion v17")
+```
+
+```{r}
+#divided by total population
+mydata$y<-mydata$V10/mydata$V5
+mydata$V8<-mydata$V8/mydata$V5
+mydata$V4<-mydata$V4/mydata$V5
+mydata$V9<-mydata$V9/mydata$V5
+#change region into dummy variables
+mydata$D1<-ifelse(mydata$V17==1,1,0)
+mydata$D2<-ifelse(mydata$V17==2,1,0)
+mydata$D3<-ifelse(mydata$V17==3,1,0)
+```
+
+```{r}
+#initial multiple regression
+fit1<-lm(y~V4+V6+V7+V8+V9+V11+V12+V13+V14+V15+D1+D2+D3,data=mydata)
+summary(fit1)
+#new dataframe with independent variables
+mydata1<-mydata[,4:18]
+mydata1<-mydata1[,-2]
+mydata1<-mydata1[,-6]
+mydata1<-mydata1[,-12]
+mydata1<-mydata1[,-11]
+mydata1<-mydata1[,-11]
+#correlation
+cor(mydata1)
+library("DescTools")
+VIF(fit1)
+```
+
+```{r}
+library("mixlm")
+#using stepwise method to find significant variables to y
+lm<-stepWise(fit1,alpha.enter = 0.05,alpha.remove = 0.055)
+summary(lm)
+#residual plot
+plot(lm)
+#find outlier and remove it
+mydata$res<-lm$residuals
+mydata2<-mydata[-which(mydata$res==max(mydata$res)),]
+#fit new model without outlier
+fit111<-lm(y~V4+V6+V7+V8+V9+V11+V12+V13+V14+V15+D1+D2+D3,data=mydata2)
+lm111<-stepWise(fit111,alpha.enter = 0.05,alpha.remove = 0.055)
+summary(lm111)
+plot(lm111)
+```
+
+```{r}
+#add quadratic terms
+fit_qua<-lm(y~V4+I(V4^2)+V9+I(V9^2)+V6+I(V6^2)+V13+I(V13^2)+V15+
+              I(V15^2)+D1+D2,data=mydata2)
+lm_qua<-stepWise(fit_qua,alpha.enter = 0.05,alpha.remove = 0.055)
+summary(lm_qua)
+```
